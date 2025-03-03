@@ -1,2 +1,5 @@
 # Ignore virtual environment directory
 .venv/
+
+# Ignore data directory
+data/Real/
