@@ -2,4 +2,4 @@
 .venv/
 
 # Ignore data directory
-data/Real/
+data/
