@@ -66,3 +66,40 @@ venv.bak/
 *.swp
 *.swo
 full code.py
+CNN RESULTS/best_highscore_cnn_detector.keras
+CNN RESULTS/final_scores_summary.txt
+CNN RESULTS/final_tuned_cnn_detector.keras
+CNN RESULTS/training_log_highscore_cnn.csv
+CNN RESULTS/old/best_ensemble_deepfake_detector.keras
+CNN RESULTS/old/best_finetuned_ensemble_detector.keras
+CNN RESULTS/old/best_highscore_cnn_detector.keras
+CNN RESULTS/old/final_ensemble_deepfake_detector_weights.keras
+CNN RESULTS/old/final_ensemble_deepfake_detector.keras
+CNN RESULTS/old/final_tuned_cnn_detector.keras
+CNN RESULTS/old/training_log_ensemble_large_dataset.csv
+CNN RESULTS/old/training_log_highscore_cnn.csv
+CNN RESULTS/old/ensemble_savedmodel/saved_model.pb
+CNN RESULTS/old/ensemble_savedmodel/variables/variables.data-00000-of-00001
+CNN RESULTS/old/ensemble_savedmodel/variables/variables.index
+CNN RESULTS/oldd/best_highscore_cnn_detector.keras
+CNN RESULTS/oldd/training_log_highscore_cnn.csv
+CNN RESULTS/older/best_ensemble_deepfake_detector.keras
+CNN RESULTS/older/best_finetuned_ensemble_detector.keras
+CNN RESULTS/older/final_ensemble_deepfake_detector.keras
+CNN RESULTS/older/training_log_ensemble_cnn.csv
+logs/train/events.out.tfevents.1743959140.VINAYAKS-PC.72596.0.v2
+logs/train/events.out.tfevents.1743959590.VINAYAKS-PC.12352.0.v2
+logs/train/events.out.tfevents.1743959719.VINAYAKS-PC.6816.0.v2
+logs/train/events.out.tfevents.1743960481.VINAYAKS-PC.14736.0.v2
+logs/train/events.out.tfevents.1743960736.VINAYAKS-PC.8604.0.v2
+logs/train/events.out.tfevents.1743992933.VINAYAKS-PC.5788.0.v2
+logs/train/events.out.tfevents.1743994448.VINAYAKS-PC.10224.0.v2
+logs/train/events.out.tfevents.1744021907.VINAYAKS-PC.24620.0.v2
+logs/train/events.out.tfevents.1744022007.VINAYAKS-PC.13716.0.v2
+logs/train/events.out.tfevents.1744022156.VINAYAKS-PC.15624.0.v2
+logs/train/events.out.tfevents.1744022286.VINAYAKS-PC.27724.0.v2
+logs/train/events.out.tfevents.1744025564.VINAYAKS-PC.29940.0.v2
+logs/validation/events.out.tfevents.1743961612.VINAYAKS-PC.8604.1.v2
+logs/validation/events.out.tfevents.1743993620.VINAYAKS-PC.5788.1.v2
+logs/validation/events.out.tfevents.1743995122.VINAYAKS-PC.10224.1.v2
+logs/validation/events.out.tfevents.1744026094.VINAYAKS-PC.29940.1.v2
