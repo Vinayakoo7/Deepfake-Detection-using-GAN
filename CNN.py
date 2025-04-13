@@ -35,13 +35,13 @@ import tensorflow as tf
 # Import layers for data augmentation
 from tensorflow.keras import layers
 # Import necessary components for the CNN model
-from tensorflow.keras.models import Sequential, Model
+from tensorflow.keras.models import Sequential
 from tensorflow.keras.layers import Input, Conv2D, MaxPooling2D, Flatten, Dense, Dropout, BatchNormalization
 # Import Mixed Precision API
 from tensorflow.keras import mixed_precision
 # Import Callbacks
-from tensorflow.keras.callbacks import EarlyStopping, ModelCheckpoint, CSVLogger, ReduceLROnPlateau
-from tensorflow.keras.optimizers import Adam, SGD
+from tensorflow.keras.callbacks import EarlyStopping, ModelCheckpoint, CSVLogger
+from tensorflow.keras.optimizers import Adam
 from sklearn.metrics import classification_report, confusion_matrix
 import time # To potentially time data loading
 
@@ -66,16 +66,15 @@ TRAIN_DIR = os.path.join(DATASET_DIR, 'Train')
 VAL_DIR = os.path.join(DATASET_DIR, 'Validation')
 TEST_DIR = os.path.join(DATASET_DIR, 'Test') 
 
-IMG_HEIGHT = 128  # Keeping at 128x128 as input images are resized from 256x256
-IMG_WIDTH = 128   
+IMG_HEIGHT = 164  # Higher resolution for better feature extraction
+IMG_WIDTH = 164   
 IMAGE_SIZE = (IMG_HEIGHT, IMG_WIDTH)
-BATCH_SIZE = 32   # Further reduced batch size to improve generalization
-EPOCHS = 30
-LEARNING_RATE = 0.00005  # Reduced from 0.0001 to help prevent overfitting
-AUTOTUNE = tf.data.AUTOTUNE 
+BATCH_SIZE = 16    # Batch size for 224x224 images
+EPOCHS = 50       # Number of training epochs
+LEARNING_RATE = 0.00005
+AUTOTUNE = tf.data.AUTOTUNE
 
 # New configuration for ensemble model
-ENSEMBLE_MODE = 'average'  # 'average' or 'concatenate'
 USE_CLASS_WEIGHTS = True   # Set to True to use class weights if imbalance detected
 
 CSV_LOG_FILE = 'training_log_tuned_cnn.csv'
@@ -85,6 +84,18 @@ CSV_LOG_FILE = 'training_log_tuned_cnn.csv'
 # Should be done at the start of the script
 print("Enabling Mixed Precision Training (mixed_float16)")
 mixed_precision.set_global_policy('mixed_float16')
+
+# --- Optimize GPU Memory Usage ---
+print("Optimizing GPU memory usage...")
+gpus = tf.config.experimental.list_physical_devices('GPU')
+if gpus:
+    try:
+        # Memory growth needs to be the same across all GPUs
+        for gpu in gpus:
+            tf.config.experimental.set_memory_growth(gpu, True)
+        print(f"Memory growth enabled on {len(gpus)} GPU(s)")
+    except RuntimeError as e:
+        print(f"Memory growth setting error: {e}")
 
 # --- Data Loading and Preprocessing with tf.data ---
 
@@ -148,43 +159,6 @@ def preprocess_data(image, label):
 def preprocess_and_augment_data(image, label):
     image = data_augmentation(image, training=True) # Apply augmentation
     image = tf.cast(image, tf.float32) / 255.0      # Scale pixel values
-    return image, label
-
-# Create a preprocessing dictionary to handle different model requirements
-def resnet_preprocess_wrapper(image):
-    """Wrapper to handle dtype conversion for ResNet preprocessing"""
-    image = tf.cast(image, tf.float32)
-    return resnet_preprocess_input(image)
-
-def efficientnet_preprocess_wrapper(image):
-    """Wrapper to handle dtype conversion for EfficientNet preprocessing"""
-    image = tf.cast(image, tf.float32)
-    return efficientnet_preprocess_input(image)
-
-def mobilenet_preprocess_wrapper(image):
-    """Wrapper to handle dtype conversion for MobileNet preprocessing"""
-    image = tf.cast(image, tf.float32)
-    return mobilenet_preprocess_input(image)
-
-preprocessing_functions = {
-    'resnet': resnet_preprocess_wrapper,
-    'efficientnet': efficientnet_preprocess_wrapper,
-    'mobilenet': mobilenet_preprocess_wrapper
-}
-
-# Create specialized preprocessing functions for each model branch
-def preprocess_data_multi(image, label, model_name='efficientnet'):
-    """Generic preprocessing function for different models"""
-    # No need to cast here as it's handled in the wrapper functions
-    image = preprocessing_functions[model_name](image)
-    return image, label
-
-def preprocess_and_augment_data_multi(image, label, model_name='efficientnet'):
-    """Generic preprocessing with augmentation function for different models"""
-    # Apply augmentation first
-    image = data_augmentation(image, training=True)
-    # Then apply model-specific preprocessing with dtype handling
-    image = preprocessing_functions[model_name](image)
     return image, label
 
 # Load datasets
@@ -319,15 +293,6 @@ except Exception as e:
 # --- Build the Parameter-Tuned CNN Model ---
 print("\nBuilding the Enhanced CNN Model for 128x128 images...")
 
-# Early Stopping with increased patience for better convergence
-early_stopping = EarlyStopping(
-    monitor='val_accuracy', 
-    patience=5,  # Increased from 3 to give model more time to converge
-    mode='max',
-    min_delta=0.005,  # Reduced from 0.01 to be more sensitive to improvements
-    restore_best_weights=True
-)
-
 from tensorflow.keras.regularizers import l2
 
 # Create the enhanced CNN with regularization to combat overfitting
@@ -394,13 +359,13 @@ print("\nCreating a single optimized dataset pipeline...")
 # We'll handle preprocessing differences within the model structure
 
 # --- Train the Parameter-Tuned CNN Model ---
-print("Training the enhanced CNN model with dual progress bars...")
+print("Training the enhanced CNN model...")
 
 # Define all necessary callbacks
 # Early stopping (already defined earlier)
 early_stopping = EarlyStopping(
     monitor='val_accuracy', 
-    patience=10,
+    patience=20,
     verbose=1, 
     restore_best_weights=True,
     min_delta=0.001
@@ -425,8 +390,8 @@ tensorboard_callback = tf.keras.callbacks.TensorBoard(
     update_freq='epoch'
 )
 
-# Create a TQDM-compatible learning rate scheduler
-class TqdmWarmUpCosineDecayScheduler(tf.keras.callbacks.Callback):
+# Create a learning rate scheduler
+class WarmUpCosineDecayScheduler(tf.keras.callbacks.Callback):
     def __init__(self, lr_max=0.0001, warmup_epochs=5, total_epochs=50):
         super().__init__()
         self.lr_max = lr_max
@@ -446,55 +411,14 @@ class TqdmWarmUpCosineDecayScheduler(tf.keras.callbacks.Callback):
         print(f"\nLearning rate for epoch {epoch+1} set to {lr:.6f}")
 
 # Initialize the learning rate scheduler
-lr_scheduler = TqdmWarmUpCosineDecayScheduler(
+lr_scheduler = WarmUpCosineDecayScheduler(
     lr_max=LEARNING_RATE,
     warmup_epochs=3,
     total_epochs=EPOCHS
 )
 
-# Add TQDM callback for per-batch progress bars
-tqdm_callback = TqdmCallback(verbose=0, dynamic_ncols=True)  # Allow dynamic width for console
-
-# Import necessary libraries if not already imported
-import time
-from tensorflow.keras.callbacks import Callback
-
-# Create a custom callback to show total progress across all epochs
-class ProgressBarCallback(Callback):
-    def __init__(self, epochs):
-        super(ProgressBarCallback, self).__init__()
-        self.epochs = epochs
-        self.progbar = None
-        self.epoch_start_time = None
-        self.total_start_time = None
-        
-    def on_train_begin(self, logs=None):
-        print("\nTraining Progress (All Epochs):")
-        self.progbar = tqdm(total=self.epochs, position=0, desc="Total Progress", 
-                           bar_format='{desc}: {percentage:3.0f}%|{bar}| {n_fmt}/{total_fmt} [ETA: {remaining}, Elapsed: {elapsed}]')
-        self.total_start_time = time.time()
-        
-    def on_epoch_begin(self, epoch, logs=None):
-        self.epoch_start_time = time.time()
-        
-    def on_epoch_end(self, epoch, logs=None):
-        elapsed = time.time() - self.epoch_start_time
-        self.progbar.set_postfix(loss=f"{logs.get('loss', 0):.4f}", 
-                                val_acc=f"{logs.get('val_accuracy', 0):.4f}",
-                                time=f"{elapsed:.1f}s")
-        self.progbar.update(1)
-        
-    def on_train_end(self, logs=None):
-        self.progbar.close()
-        total_time = time.time() - self.total_start_time
-        print(f"\nTotal training time: {total_time:.1f}s ({total_time/60:.1f}m)")
-
-# Create the custom progress tracker
-total_progress = ProgressBarCallback(EPOCHS)
-
-# Update the callback list to include our new progress bar
-callbacks_list = [early_stopping, model_checkpoint, csv_logger, lr_scheduler, 
-                 tqdm_callback, tensorboard_callback, total_progress]
+# Update the callback list to only include necessary callbacks
+callbacks_list = [early_stopping, model_checkpoint, csv_logger, lr_scheduler, tensorboard_callback]
 
 # Initialize class_weight variable
 class_weight = None
